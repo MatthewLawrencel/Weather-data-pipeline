@@ -19,9 +19,7 @@ The pipeline shows how to build a real-world, cloud-connected ETL system — fro
 
 ## Project Architecture
 
-OpenWeatherMap API → extract_data.py → PostgreSQL (Neon)
-↓
-Streamlit Dashboard
+OpenWeatherMap API → extract_data.py → PostgreSQL (Neon) → Streamlit Dashboard
 
 ---
 
