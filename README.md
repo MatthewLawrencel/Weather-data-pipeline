@@ -1,9 +1,7 @@
 # Weather Data Engineering Pipeline  
-
----     
+ 
   Weather Data Extraction, Transformation, and Visualization using Python, PostgreSQL, and Streamlit
 
----
 
 ## Overview
 
@@ -15,16 +13,10 @@ This project demonstrates a complete **Data Engineering workflow**:
 
 The pipeline shows how to build a real-world, cloud-connected ETL system — from API to dashboard — using only Python and open-source tools.
 
----
-
 ## Project Architecture
 
 OpenWeatherMap API → extract_data.py → PostgreSQL (Neon) → Streamlit Dashboard
 
----
-
-
----
 
 ## Tech Stack
 
@@ -37,10 +29,7 @@ OpenWeatherMap API → extract_data.py → PostgreSQL (Neon) → Streamlit Dashb
 | Visualization | Streamlit |
 | Environment | Ubuntu 24.04 + venv |
 
----
 
-
----
 
 ## Setup Instructions
 
