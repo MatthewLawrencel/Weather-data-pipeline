@@ -1,10 +1,10 @@
 import requests
 import pandas as pd
-from datetime import datetime, timezone   
-from sqlalchemy import create_engine, text 
+from datetime import datetime, timezone
+from sqlalchemy import create_engine, text
 import os
 
-#  OpenWeatherMap API key (your working key)
+#  OpenWeatherMap API key
 API_KEY = "f0d17542f4b2710bec5278246688429e"
 
 #  Neon PostgreSQL connection URL 
@@ -49,6 +49,7 @@ def fetch_weather(city, lat, lon):
         "humidity_%": data["main"]["humidity"],
         "wind_speed_m_s": data["wind"]["speed"],
         "feels_like_c": data["main"]["feels_like"],
+        "time": datetime.now(timezone.utc),
         "extracted_at": datetime.now(timezone.utc),
     }
 
@@ -70,6 +71,16 @@ def extract_all_cities():
     return df
 
 
+def extract_weather_data(city):
+    """Extract weather for a single city (used by transform_data.py)."""
+    city = city.strip()
+    if city not in CITIES:
+        raise ValueError(f"{city} not in CITIES list.")
+
+    lat, lon = CITIES[city]
+    record = fetch_weather(city, lat, lon)
+    return pd.DataFrame([record])
+
 def load_to_postgres(df):
     """Load extracted data into Neon PostgreSQL"""
     if df.empty:
@@ -85,7 +96,6 @@ def load_to_postgres(df):
         print(f"Successfully loaded {len(df)} rows into PostgreSQL.")
     except Exception as e:
         print(f"Database load failed: {e}")
-
 
 if __name__ == "__main__":
     df = extract_all_cities()
