@@ -9,24 +9,31 @@ def clean_weather_data(df: pd.DataFrame) -> pd.DataFrame:
         print("No data to clean.")
         return df
 
-    #  Drop duplicates (in case of multiple fetches)
+    #  Drop duplicates
     df = df.drop_duplicates()
 
-    #  Handle missing values
+    #  Fill missing values
     df = df.fillna({
         "temperature_c": 0.0,
         "humidity_%": 0.0,
-        "wind_speed_m_s": 0.0
+        "wind_speed_m_s": 0.0,
+        "feels_like_c": 0.0,
+        "time": None,
+        "extracted_at": None
     })
 
-    #  Convert time columns to timezone-aware datetimes
-    df["time"] = pd.to_datetime(df["time"], utc=True, errors="coerce")
+    # Convert time columns to timezone-aware datetimes
+    if "time" in df.columns:
+        df["time"] = pd.to_datetime(df["time"], utc=True, errors="coerce")
+    else:
+        df["time"] = datetime.now(timezone.utc)  # fallback if no time column exists
+
     df["extracted_at"] = pd.to_datetime(df["extracted_at"], utc=True, errors="coerce")
 
-    #  Add a computed “feels_like” column (example transformation)
+    # Add computed column
     df["feels_like_c"] = df["temperature_c"] - ((100 - df["humidity_%"]) / 5)
 
-    #  Re-order columns for clarity
+    # Re-order columns
     df = df[
         ["city", "time", "temperature_c", "humidity_%", "wind_speed_m_s", "feels_like_c", "extracted_at"]
     ]
@@ -35,12 +42,16 @@ def clean_weather_data(df: pd.DataFrame) -> pd.DataFrame:
 
 
 if __name__ == "__main__":
-    from extract_data import extract_weather_data
+    
+    from extract_data import extract_all_cities as extract_weather_data
 
-    raw_df = extract_weather_data("Bengaluru")
+    print(" Fetching raw weather data...")
+    raw_df = extract_weather_data()
     print(" Raw data:")
     print(raw_df)
 
+    print("\n Cleaning data...")
     clean_df = clean_weather_data(raw_df)
-    print("\n Cleaned & transformed data:")
+    print("\n Cleaned data:")
     print(clean_df)
+
