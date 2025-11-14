@@ -1,114 +1,125 @@
 import streamlit as st
 import pandas as pd
+from sqlalchemy import create_engine, text
 import plotly.express as px
-from sqlalchemy import create_engine
+from PIL import Image
 import os
 
-
-# Page Config
-
+# ----------------------------
+# STREAMLIT PAGE CONFIG
+# ----------------------------
 st.set_page_config(
     page_title="Indian Weather Dashboard",
-    page_icon="🌦️",
+    page_icon="🌦️",  # your site icon
     layout="wide"
 )
 
-
-# Title
-
 st.title("🌦️ Indian Weather Dashboard")
-st.markdown("### Live Weather Insights from 20 Major Indian Cities")
+st.write("Displays the latest weather data loaded into PostgreSQL.")
 
 
-# Database Connection
-
+# ----------------------------
+# DATABASE CONNECTION
+# ----------------------------
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 if not DATABASE_URL:
-    st.error("❌ DATABASE_URL not found. Please set the environment variable.")
+    st.error("❌ DATABASE_URL is missing. Set it before running the dashboard.")
     st.stop()
 
 engine = create_engine(DATABASE_URL)
 
+
+# ----------------------------
+# FETCH DATA FROM POSTGRES
+# ----------------------------
 @st.cache_data(ttl=300)
-def load_weather_data():
-    query = "SELECT * FROM weather_reports ORDER BY extracted_at DESC"
-    return pd.read_sql(query, engine)
+def fetch_data():
+    try:
+        query = text("SELECT * FROM weather_reports ORDER BY extracted_at DESC")
+        df = pd.read_sql(query, engine)
+        return df
+    except Exception as e:
+        st.error(f"Database error: {e}")
+        return pd.DataFrame()
 
 
-# Load Data
-
-try:
-    df = load_weather_data()
-except Exception as e:
-    st.error(f"❌ Failed to load data from database:\n\n{e}")
-    st.stop()
+df = fetch_data()
 
 if df.empty:
-    st.warning("⚠️ No weather data found in the database.")
+    st.warning("⚠ No weather data available in the database.")
     st.stop()
 
 
-# Sidebar Filters
-
-st.sidebar.header("🔍 Filter Data")
-selected_city = st.sidebar.selectbox("Choose City", sorted(df["city"].unique()))
-
-city_df = df[df["city"] == selected_city]
-
-
-# Display City Data
-
-st.subheader(f"🏙️ Weather Summary: **{selected_city}**")
-
-col1, col2, col3, col4 = st.columns(4)
-col1.metric("🌡️ Temperature (°C)", f"{city_df.iloc[0]['temperature_c']:.1f}")
-col2.metric("💧 Humidity (%)", f"{city_df.iloc[0]['humidity_%']:.1f}")
-col3.metric("🌬️ Wind Speed (m/s)", f"{city_df.iloc[0]['wind_speed_m_s']:.1f}")
-col4.metric("🥵 Feels Like (°C)", f"{city_df.iloc[0]['feels_like_c']:.1f}")
-
-st.divider()
+# ----------------------------
+# CITY DROPDOWN
+# ----------------------------
+cities = df["city"].unique()
+selected_city = st.selectbox("Choose City", cities)
 
 
-# Data Table
+# ----------------------------
+# FILTER CITY DATA
+# ----------------------------
+city_df = df[df["city"] == selected_city].copy()
 
-st.subheader("📘 Detailed Data Table")
-st.dataframe(city_df, height=300, width="stretch")  # ✨ FIXED (no more errors)
-
-st.divider()
+# Ensure timestamps are datetime
+city_df["extracted_at"] = pd.to_datetime(city_df["extracted_at"], errors="coerce")
 
 
-# Line Chart (Temperature Trend)
+# ----------------------------
+# CITY WEATHER TABLE
+# ----------------------------
+st.subheader("📊 City Weather Details")
 
-st.subheader("📈 Temperature Trend Over Time")
+st.dataframe(
+    city_df,
+    height=230,
+    width="stretch"     # FIXES Streamlit width error
+)
 
-fig = px.line(
+
+# ----------------------------
+# TEMPERATURE TREND
+# ----------------------------
+st.subheader("🌡 Temperature Trend")
+
+fig_temp = px.line(
     city_df,
     x="extracted_at",
     y="temperature_c",
-    title=f"Temperature Trend — {selected_city}",
-    markers=True
+    markers=True,
+    title=f"Temperature Trend - {selected_city}",
 )
+st.plotly_chart(fig_temp, use_container_width=True)
 
-st.plotly_chart(fig, use_container_width=True)
 
-
-# Humidity Chart
-
+# ----------------------------
+# HUMIDITY TREND
+# ----------------------------
 st.subheader("💧 Humidity Trend")
 
-fig2 = px.area(
+fig_hum = px.line(
     city_df,
     x="extracted_at",
     y="humidity_%",
-    title=f"Humidity Trend — {selected_city}",
+    markers=True,
+    title=f"Humidity Trend - {selected_city}",
 )
+st.plotly_chart(fig_hum, use_container_width=True)
 
-st.plotly_chart(fig2, use_container_width=True)
 
+# ----------------------------
+# WIND SPEED TREND
+# ----------------------------
+st.subheader("🌬 Wind Speed Trend")
 
-# Footer
-
-st.markdown("---")
-st.markdown("Made with ❤️ by Matthew · Powered by Streamlit + Neon DB")
+fig_wind = px.line(
+    city_df,
+    x="extracted_at",
+    y="wind_speed_m_s",
+    markers=True,
+    title=f"Wind Speed Trend - {selected_city}",
+)
+st.plotly_chart(fig_wind, use_container_width=True)
 

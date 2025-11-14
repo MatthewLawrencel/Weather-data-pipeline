@@ -1,19 +1,19 @@
 import requests
 import pandas as pd
-from datetime import datetime, timezone   
-from sqlalchemy import create_engine, text 
+from datetime import datetime, timezone
+from sqlalchemy import create_engine, text
 import os
 
-#  OpenWeatherMap API key 
+# Your original API key
 API_KEY = "f0d17542f4b2710bec5278246688429e"
 
-#  Neon PostgreSQL connection URL 
+# Neon PostgreSQL connection
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "postgresql+psycopg2://neondb_owner:npg_JvYhZ5OTi9Gy@ep-damp-rice-a1pcsqzf-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require"
+    "postgresql+psycopg2://neondb_owner:password@host/neondb?sslmode=require"
 )
 
-# 20 Major Indian Cities with coordinates
+#  20 cities
 CITIES = {
     "Bengaluru": (12.9716, 77.5946),
     "Mumbai": (19.0760, 72.8777),
@@ -39,21 +39,35 @@ CITIES = {
 
 def fetch_weather(city, lat, lon):
     """Fetch weather data from OpenWeatherMap"""
-    url = f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={API_KEY}&units=metric"
+
+    url = (
+        f"https://api.openweathermap.org/data/2.5/weather?"
+        f"lat={lat}&lon={lon}&appid={API_KEY}&units=metric"
+    )
+
     response = requests.get(url)
     response.raise_for_status()
     data = response.json()
+
+    now = datetime.now(timezone.utc)
+
     return {
         "city": city,
         "temperature_c": data["main"]["temp"],
         "humidity_%": data["main"]["humidity"],
         "wind_speed_m_s": data["wind"]["speed"],
         "feels_like_c": data["main"]["feels_like"],
-        "extracted_at": datetime.now(timezone.utc),
+        
+        # ⭐ FIX #1 — ADD MISSING TIME FIELD
+        "time": now,
+
+        "extracted_at": now,
     }
+
 
 def extract_all_cities():
     """Fetch weather for all 20 Indian cities"""
+
     all_data = []
     print("\nExtracting live weather data for 20 Indian cities...\n")
 
@@ -72,17 +86,22 @@ def extract_all_cities():
 
 def load_to_postgres(df):
     """Load extracted data into Neon PostgreSQL"""
+
     if df.empty:
         print("No data to load.")
         return
+    
     try:
         engine = create_engine(DATABASE_URL)
+
         with engine.connect() as conn:
             conn.execute(text("TRUNCATE TABLE weather_reports;"))
             conn.commit()
 
         df.to_sql("weather_reports", engine, if_exists="append", index=False)
+
         print(f"Successfully loaded {len(df)} rows into PostgreSQL.")
+
     except Exception as e:
         print(f"Database load failed: {e}")
 
