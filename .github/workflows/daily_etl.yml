@@ -1,0 +1,45 @@
+name: Daily Weather Data ETL
+
+on:
+  schedule:
+    - cron: "0 6 * * *"     # Runs every day at 3 AM UTC
+  workflow_dispatch:
+
+jobs:
+  run-etl:
+    runs-on: ubuntu-latest
+
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      OPENWEATHER_API_KEY: ${{ secrets.OPENWEATHER_API_KEY }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Extract Step
+        run: |
+          source .venv/bin/activate
+          python extract_data.py
+
+      - name: Run Transform Step
+        run: |
+          source .venv/bin/activate
+          python transform_data.py
+
+      - name: Run Load Step
+        run: |
+          source .venv/bin/activate
+          python load_data.py
